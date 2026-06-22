@@ -1,0 +1,539 @@
+Compiled from "j.java"
+class a.b.d.j implements java.lang.AutoCloseable {
+  private com.sun.jna.platform.win32.WinNT$HANDLE P;
+
+  private com.sun.jna.platform.win32.WinNT$HANDLE W;
+
+  private boolean e;
+
+  private byte D;
+
+  private static final java.lang.String a;
+
+  private static final long[] b;
+
+  private static final java.lang.Integer[] c;
+
+  private a.b.d.j();
+    Code:
+         0: aload_0
+         1: invokespecial #204                // Method java/lang/Object."<init>":()V
+         4: aload_0
+         5: iconst_0
+         6: putfield      #177                // Field e:Z
+         9: return
+
+  public void s() throws java.lang.Exception;
+    Code:
+         0: ldc2_w        #217                // long 103474639082245l
+         3: lstore_1
+         4: getstatic     #43                 // Field a/b/d/dec$NssSec.m:Z
+         7: new           #173                // class com/sun/jna/ptr/ByteByReference
+        10: dup
+        11: invokespecial #168                // Method com/sun/jna/ptr/ByteByReference."<init>":()V
+        14: astore        5
+        16: istore_3
+        17: iload_3
+        18: ifne          74
+        21: getstatic     #176                // Field a/b/d/dec$D.I:La/b/d/dec$D;
+        24: sipush        16161
+        27: ldc2_w        #223                // long 5423994717672824955l
+        30: lload_1
+        31: lxor
+        32: invokestatic  #11                 // Method a:(IJ)I
+        35: iconst_1
+        36: iconst_0
+        37: aload         5
+        39: invokeinterface #123,  5          // InterfaceMethod a/b/d/dec$D.RtlAdjustPrivilege:(IZZLcom/sun/jna/ptr/ByteByReference;)I
+        44: ifeq          60
+        47: goto          51
+        50: athrow
+        51: new           #159                // class java/lang/Exception
+        54: dup
+        55: invokespecial #179                // Method java/lang/Exception."<init>":()V
+        58: athrow
+        59: athrow
+        60: aload_0
+        61: iconst_1
+        62: putfield      #177                // Field e:Z
+        65: aload_0
+        66: aload         5
+        68: invokevirtual #189                // Method com/sun/jna/ptr/ByteByReference.getValue:()B
+        71: putfield      #75                 // Field D:B
+        74: new           #15                 // class com/sun/jna/platform/win32/Tlhelp32$PROCESSENTRY32$ByReference
+        77: dup
+        78: invokespecial #112                // Method com/sun/jna/platform/win32/Tlhelp32$PROCESSENTRY32$ByReference."<init>":()V
+        81: astore        6
+        83: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+        86: getstatic     #64                 // Field com/sun/jna/platform/win32/Tlhelp32.TH32CS_SNAPPROCESS:Lcom/sun/jna/platform/win32/WinDef$DWORD;
+        89: new           #122                // class com/sun/jna/platform/win32/WinDef$DWORD
+        92: dup
+        93: lconst_0
+        94: invokespecial #16                 // Method com/sun/jna/platform/win32/WinDef$DWORD."<init>":(J)V
+        97: invokeinterface #148,  3          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.CreateToolhelp32Snapshot:(Lcom/sun/jna/platform/win32/WinDef$DWORD;Lcom/sun/jna/platform/win32/WinDef$DWORD;)Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       102: astore        7
+       104: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+       107: aload         7
+       109: aload         6
+       111: invokeinterface #160,  3          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.Process32First:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;Lcom/sun/jna/platform/win32/Tlhelp32$PROCESSENTRY32;)Z
+       116: iload_3
+       117: ifne          222
+       120: ifeq          212
+       123: goto          127
+       126: athrow
+       127: getstatic     #135                // Field a:Ljava/lang/String;
+       130: aload         6
+       132: getfield      #169                // Field com/sun/jna/platform/win32/Tlhelp32$PROCESSENTRY32$ByReference.szExeFile:[C
+       135: invokestatic  #203                // Method com/sun/jna/Native.toString:([C)Ljava/lang/String;
+       138: invokevirtual #182                // Method java/lang/String.equalsIgnoreCase:(Ljava/lang/String;)Z
+       141: ifeq          197
+       144: goto          148
+       147: athrow
+       148: aload_0
+       149: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+       152: sipush        31333
+       155: ldc2_w        #215                // long 6016258906026779965l
+       158: lload_1
+       159: lxor
+       160: invokestatic  #11                 // Method a:(IJ)I
+       163: iconst_0
+       164: aload         6
+       166: getfield      #124                // Field com/sun/jna/platform/win32/Tlhelp32$PROCESSENTRY32$ByReference.th32ProcessID:Lcom/sun/jna/platform/win32/WinDef$DWORD;
+       169: invokevirtual #80                 // Method com/sun/jna/platform/win32/WinDef$DWORD.intValue:()I
+       172: invokeinterface #155,  4          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.OpenProcess:(IZI)Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       177: putfield      #126                // Field P:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       180: iload_3
+       181: ifeq          212
+       184: getstatic     #201                // Field a/b/d/dec.V:I
+       187: istore        4
+       189: iinc          4, 1
+       192: iload         4
+       194: putstatic     #201                // Field a/b/d/dec.V:I
+       197: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+       200: aload         7
+       202: aload         6
+       204: invokeinterface #92,  3           // InterfaceMethod com/sun/jna/platform/win32/Kernel32.Process32Next:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;Lcom/sun/jna/platform/win32/Tlhelp32$PROCESSENTRY32;)Z
+       209: ifne          127
+       212: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+       215: aload         7
+       217: invokeinterface #139,  2          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.CloseHandle:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;)Z
+       222: pop
+       223: new           #152                // class com/sun/jna/platform/win32/WinNT$HANDLEByReference
+       226: dup
+       227: invokespecial #32                 // Method com/sun/jna/platform/win32/WinNT$HANDLEByReference."<init>":()V
+       230: astore        8
+       232: new           #152                // class com/sun/jna/platform/win32/WinNT$HANDLEByReference
+       235: dup
+       236: invokespecial #32                 // Method com/sun/jna/platform/win32/WinNT$HANDLEByReference."<init>":()V
+       239: astore        9
+       241: getstatic     #94                 // Field com/sun/jna/platform/win32/Advapi32.INSTANCE:Lcom/sun/jna/platform/win32/Advapi32;
+       244: aload_0
+       245: getfield      #126                // Field P:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       248: sipush        13414
+       251: ldc2_w        #213                // long 5969573508949273407l
+       254: lload_1
+       255: lxor
+       256: invokestatic  #11                 // Method a:(IJ)I
+       259: aload         8
+       261: invokeinterface #154,  4          // InterfaceMethod com/sun/jna/platform/win32/Advapi32.OpenProcessToken:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;ILcom/sun/jna/platform/win32/WinNT$HANDLEByReference;)Z
+       266: pop
+       267: getstatic     #94                 // Field com/sun/jna/platform/win32/Advapi32.INSTANCE:Lcom/sun/jna/platform/win32/Advapi32;
+       270: aload         8
+       272: invokevirtual #52                 // Method com/sun/jna/platform/win32/WinNT$HANDLEByReference.getValue:()Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       275: iconst_2
+       276: aload         9
+       278: invokeinterface #50,  4           // InterfaceMethod com/sun/jna/platform/win32/Advapi32.DuplicateToken:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;ILcom/sun/jna/platform/win32/WinNT$HANDLEByReference;)Z
+       283: pop
+       284: getstatic     #94                 // Field com/sun/jna/platform/win32/Advapi32.INSTANCE:Lcom/sun/jna/platform/win32/Advapi32;
+       287: aload         9
+       289: invokevirtual #52                 // Method com/sun/jna/platform/win32/WinNT$HANDLEByReference.getValue:()Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       292: invokeinterface #128,  2          // InterfaceMethod com/sun/jna/platform/win32/Advapi32.ImpersonateLoggedOnUser:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;)Z
+       297: pop
+       298: aload_0
+       299: aload         9
+       301: invokevirtual #52                 // Method com/sun/jna/platform/win32/WinNT$HANDLEByReference.getValue:()Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       304: putfield      #138                // Field W:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       307: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+       310: aload         8
+       312: invokevirtual #52                 // Method com/sun/jna/platform/win32/WinNT$HANDLEByReference.getValue:()Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+       315: invokeinterface #139,  2          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.CloseHandle:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;)Z
+       320: pop
+       321: iload_3
+       322: ifne          180
+       325: return
+      Exception table:
+         from    to  target type
+            17    47    50   Class java/lang/Exception
+            21    59    59   Class java/lang/Exception
+           104   123   126   Class java/lang/Exception
+           120   144   147   Class java/lang/Exception
+
+  public void close();
+    Code:
+         0: ldc2_w        #221                // long 11224664293222l
+         3: lstore_1
+         4: getstatic     #43                 // Field a/b/d/dec$NssSec.m:Z
+         7: getstatic     #94                 // Field com/sun/jna/platform/win32/Advapi32.INSTANCE:Lcom/sun/jna/platform/win32/Advapi32;
+        10: invokeinterface #30,  1           // InterfaceMethod com/sun/jna/platform/win32/Advapi32.RevertToSelf:()Z
+        15: pop
+        16: istore_3
+        17: aload_0
+        18: getfield      #138                // Field W:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+        21: iload_3
+        22: ifne          49
+        25: ifnull        41
+        28: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+        31: aload_0
+        32: getfield      #138                // Field W:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+        35: invokeinterface #139,  2          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.CloseHandle:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;)Z
+        40: pop
+        41: aload_0
+        42: iload_3
+        43: ifne          66
+        46: getfield      #126                // Field P:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+        49: ifnull        65
+        52: getstatic     #183                // Field com/sun/jna/platform/win32/Kernel32.INSTANCE:Lcom/sun/jna/platform/win32/Kernel32;
+        55: aload_0
+        56: getfield      #126                // Field P:Lcom/sun/jna/platform/win32/WinNT$HANDLE;
+        59: invokeinterface #139,  2          // InterfaceMethod com/sun/jna/platform/win32/Kernel32.CloseHandle:(Lcom/sun/jna/platform/win32/WinNT$HANDLE;)Z
+        64: pop
+        65: aload_0
+        66: getfield      #177                // Field e:Z
+        69: ifeq          120
+        72: new           #173                // class com/sun/jna/ptr/ByteByReference
+        75: dup
+        76: invokespecial #168                // Method com/sun/jna/ptr/ByteByReference."<init>":()V
+        79: astore        4
+        81: getstatic     #176                // Field a/b/d/dec$D.I:La/b/d/dec$D;
+        84: sipush        28787
+        87: ldc2_w        #219                // long 7328152954667926347l
+        90: lload_1
+        91: lxor
+        92: invokestatic  #11                 // Method a:(IJ)I
+        95: aload_0
+        96: getfield      #75                 // Field D:B
+        99: iload_3
+       100: ifne          107
+       103: ifeq          110
+       106: iconst_1
+       107: goto          111
+       110: iconst_0
+       111: iconst_0
+       112: aload         4
+       114: invokeinterface #123,  5          // InterfaceMethod a/b/d/dec$D.RtlAdjustPrivilege:(IZZLcom/sun/jna/ptr/ByteByReference;)I
+       119: pop
+       120: return
+
+  static {};
+    Code:
+         0: ldc           #4                  // String +\u0003\u001aT\u0010\u0011x?\u0015
+         2: iconst_m1
+         3: goto          12
+         6: putstatic     #135                // Field a:Ljava/lang/String;
+         9: goto          149
+        12: swap
+        13: invokevirtual #147                // Method java/lang/String.toCharArray:()[C
+        16: dup
+        17: arraylength
+        18: swap
+        19: iconst_0
+        20: istore        8
+        22: swap
+        23: dup_x1
+        24: iconst_1
+        25: if_icmpgt     124
+        28: dup
+        29: iload         8
+        31: dup2
+        32: caload
+        33: iload         8
+        35: bipush        7
+        37: irem
+        38: tableswitch   { // 0 to 5
+                       0: 76
+                       1: 81
+                       2: 86
+                       3: 91
+                       4: 96
+                       5: 101
+                 default: 106
+            }
+        76: bipush        71
+        78: goto          108
+        81: bipush        112
+        83: goto          108
+        86: bipush        123
+        88: goto          108
+        91: bipush        39
+        93: goto          108
+        96: bipush        99
+        98: goto          108
+       101: bipush        63
+       103: goto          108
+       106: bipush        29
+       108: ixor
+       109: i2c
+       110: castore
+       111: iinc          8, 1
+       114: swap
+       115: dup_x1
+       116: ifne          124
+       119: dup2
+       120: swap
+       121: goto          31
+       124: swap
+       125: dup_x1
+       126: iload         8
+       128: if_icmpgt     28
+       131: new           #172                // class java/lang/String
+       134: dup_x1
+       135: swap
+       136: invokespecial #66                 // Method java/lang/String."<init>":([C)V
+       139: invokevirtual #115                // Method java/lang/String.intern:()Ljava/lang/String;
+       142: swap
+       143: pop
+       144: swap
+       145: pop
+       146: goto          6
+       149: ldc2_w        #227                // long 128315629368904l
+       152: lstore_0
+       153: iconst_4
+       154: newarray       long
+       156: astore        6
+       158: iconst_0
+       159: istore_3
+       160: ldc           #2                  // String £=í:³\u001a\u000exÏü\u0010½¤\u001bPp
+       162: dup
+       163: astore        4
+       165: invokevirtual #196                // Method java/lang/String.length:()I
+       168: istore        5
+       170: iconst_0
+       171: istore_2
+       172: aload         4
+       174: iload_2
+       175: iinc          2, 8
+       178: iload_2
+       179: invokevirtual #55                 // Method java/lang/String.substring:(II)Ljava/lang/String;
+       182: ldc           #1                  // String ISO-8859-1
+       184: invokevirtual #98                 // Method java/lang/String.getBytes:(Ljava/lang/String;)[B
+       187: astore        7
+       189: aload         6
+       191: iload_3
+       192: iinc          3, 1
+       195: aload         7
+       197: iconst_0
+       198: baload
+       199: i2l
+       200: ldc2_w        #225                // long 255l
+       203: land
+       204: bipush        56
+       206: lshl
+       207: aload         7
+       209: iconst_1
+       210: baload
+       211: i2l
+       212: ldc2_w        #225                // long 255l
+       215: land
+       216: bipush        48
+       218: lshl
+       219: lor
+       220: aload         7
+       222: iconst_2
+       223: baload
+       224: i2l
+       225: ldc2_w        #225                // long 255l
+       228: land
+       229: bipush        40
+       231: lshl
+       232: lor
+       233: aload         7
+       235: iconst_3
+       236: baload
+       237: i2l
+       238: ldc2_w        #225                // long 255l
+       241: land
+       242: bipush        32
+       244: lshl
+       245: lor
+       246: aload         7
+       248: iconst_4
+       249: baload
+       250: i2l
+       251: ldc2_w        #225                // long 255l
+       254: land
+       255: bipush        24
+       257: lshl
+       258: lor
+       259: aload         7
+       261: iconst_5
+       262: baload
+       263: i2l
+       264: ldc2_w        #225                // long 255l
+       267: land
+       268: bipush        16
+       270: lshl
+       271: lor
+       272: aload         7
+       274: bipush        6
+       276: baload
+       277: i2l
+       278: ldc2_w        #225                // long 255l
+       281: land
+       282: bipush        8
+       284: lshl
+       285: lor
+       286: aload         7
+       288: bipush        7
+       290: baload
+       291: i2l
+       292: ldc2_w        #225                // long 255l
+       295: land
+       296: lor
+       297: iconst_m1
+       298: goto          471
+       301: lastore
+       302: iload_2
+       303: iload         5
+       305: if_icmplt     172
+       308: ldc           #3                  // String \u009c\u009aê=\u0087\u0017Jq{¥ò^\u0094á\u0005\"
+       310: dup
+       311: astore        4
+       313: invokevirtual #196                // Method java/lang/String.length:()I
+       316: istore        5
+       318: iconst_0
+       319: istore_2
+       320: aload         4
+       322: iload_2
+       323: iinc          2, 8
+       326: iload_2
+       327: invokevirtual #55                 // Method java/lang/String.substring:(II)Ljava/lang/String;
+       330: ldc           #1                  // String ISO-8859-1
+       332: invokevirtual #98                 // Method java/lang/String.getBytes:(Ljava/lang/String;)[B
+       335: astore        7
+       337: aload         6
+       339: iload_3
+       340: iinc          3, 1
+       343: aload         7
+       345: iconst_0
+       346: baload
+       347: i2l
+       348: ldc2_w        #225                // long 255l
+       351: land
+       352: bipush        56
+       354: lshl
+       355: aload         7
+       357: iconst_1
+       358: baload
+       359: i2l
+       360: ldc2_w        #225                // long 255l
+       363: land
+       364: bipush        48
+       366: lshl
+       367: lor
+       368: aload         7
+       370: iconst_2
+       371: baload
+       372: i2l
+       373: ldc2_w        #225                // long 255l
+       376: land
+       377: bipush        40
+       379: lshl
+       380: lor
+       381: aload         7
+       383: iconst_3
+       384: baload
+       385: i2l
+       386: ldc2_w        #225                // long 255l
+       389: land
+       390: bipush        32
+       392: lshl
+       393: lor
+       394: aload         7
+       396: iconst_4
+       397: baload
+       398: i2l
+       399: ldc2_w        #225                // long 255l
+       402: land
+       403: bipush        24
+       405: lshl
+       406: lor
+       407: aload         7
+       409: iconst_5
+       410: baload
+       411: i2l
+       412: ldc2_w        #225                // long 255l
+       415: land
+       416: bipush        16
+       418: lshl
+       419: lor
+       420: aload         7
+       422: bipush        6
+       424: baload
+       425: i2l
+       426: ldc2_w        #225                // long 255l
+       429: land
+       430: bipush        8
+       432: lshl
+       433: lor
+       434: aload         7
+       436: bipush        7
+       438: baload
+       439: i2l
+       440: ldc2_w        #225                // long 255l
+       443: land
+       444: lor
+       445: iconst_0
+       446: goto          471
+       449: lastore
+       450: iload_2
+       451: iload         5
+       453: if_icmplt     320
+       456: aload         6
+       458: putstatic     #109                // Field b:[J
+       461: iconst_4
+       462: anewarray     #73                 // class java/lang/Integer
+       465: putstatic     #96                 // Field c:[Ljava/lang/Integer;
+       468: goto          496
+       471: dup_x2
+       472: pop
+       473: lload_0
+       474: lxor
+       475: dup2_x1
+       476: pop2
+       477: tableswitch   { // 0 to 0
+                       0: 449
+                 default: 301
+            }
+       496: return
+
+  private static int a(int, long);
+    Code:
+         0: iload_0
+         1: lload_1
+         2: ldc2_w        #211                // long 32767l
+         5: land
+         6: l2i
+         7: ixor
+         8: sipush        19548
+        11: ixor
+        12: istore_3
+        13: getstatic     #96                 // Field c:[Ljava/lang/Integer;
+        16: iload_3
+        17: aaload
+        18: ifnonnull     37
+        21: getstatic     #96                 // Field c:[Ljava/lang/Integer;
+        24: iload_3
+        25: getstatic     #109                // Field b:[J
+        28: iload_3
+        29: laload
+        30: lload_1
+        31: lxor
+        32: l2i
+        33: invokestatic  #40                 // Method java/lang/Integer.valueOf:(I)Ljava/lang/Integer;
+        36: aastore
+        37: getstatic     #96                 // Field c:[Ljava/lang/Integer;
+        40: iload_3
+        41: aaload
+        42: invokevirtual #174                // Method java/lang/Integer.intValue:()I
+        45: ireturn
+}
